@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Фотоконтроль — панель</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+﻿<style>
+/* Пилот фотоконтроля 476 group — общие стили Mini Apps (vanilla CSS, без сборки) */
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1f232c;
+  --line: #2b3140;
+  --text: #e8ecf3;
+  --muted: #9aa4b5;
+  --accent: #2f7cf6;
+  --accent-2: #1d5fd1;
+  --ok: #1f9d55;
+  --warn: #d08700;
+  --err: #d64545;
+  --radius: 14px;
+  --gap: 12px;
+  --hint: #ffd166;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f2f4f8;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --line: #d5dbe6;
+    --text: #14181f;
+    --muted: #5b6676;
+    --hint: #8a6100;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body { padding: 12px 12px 28px; max-width: 720px; margin: 0 auto; }
+
+header.appbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--gap);
+}
+
+header.appbar h1 { font-size: 17px; margin: 0; flex: 1; font-weight: 650; }
+header.appbar .sub { color: var(--muted); font-size: 12px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: var(--gap);
+}
+
+.card h2 { font-size: 15px; margin: 0 0 10px; font-weight: 650; }
+.card h3 { font-size: 13px; margin: 14px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row.wrap { flex-wrap: wrap; }
+.grow { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.hidden { display: none !important; }
+
+button, .btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+button:active, .btn:active { transform: translateY(1px); }
+button[disabled] { opacity: .45; cursor: not-allowed; }
+button.primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:active { background: var(--accent-2); }
+button.danger { background: var(--err); border-color: var(--err); color: #fff; }
+button.ghost { background: transparent; }
+button.wide { width: 100%; }
+button.sm { padding: 7px 10px; min-height: 34px; font-size: 13px; font-weight: 600; }
+
+input[type="text"], input[type="number"], input[type="file"], select, textarea {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  min-height: 44px;
+}
+textarea { min-height: 76px; resize: vertical; }
+label.field { display: block; margin-bottom: 10px; }
+label.field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+.badge.ok { background: rgba(31,157,85,.16); border-color: rgba(31,157,85,.5); color: #2ec27e; }
+.badge.warn { background: rgba(208,135,0,.16); border-color: rgba(208,135,0,.5); color: #e0a020; }
+.badge.err { background: rgba(214,69,69,.16); border-color: rgba(214,69,69,.5); color: #ff6b6b; }
+.badge.info { background: rgba(47,124,246,.16); border-color: rgba(47,124,246,.5); color: #7aa8ff; }
+
+.notice {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: var(--gap);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.notice.err { border-color: rgba(214,69,69,.55); background: rgba(214,69,69,.12); }
+.notice.ok { border-color: rgba(31,157,85,.55); background: rgba(31,157,85,.12); }
+.notice.warn { border-color: rgba(208,135,0,.55); background: rgba(208,135,0,.12); }
+
+/* ---- камера ---- */
+.stage {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+.stage video, .stage img.preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stage img.example { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #05070a; }
+.overlay {
+  position: absolute;
+  inset: 6% 5%;
+  border: 3px dashed var(--hint);
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35);
+}
+.overlay .corner { position: absolute; width: 18px; height: 18px; border: 3px solid var(--hint); }
+.overlay .corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; }
+.overlay .corner.tr { top: -3px; right: -3px; border-left: 0; border-bottom: 0; }
+.overlay .corner.bl { bottom: -3px; left: -3px; border-right: 0; border-top: 0; }
+.overlay .corner.br { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
+.overlay-label {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.stage .hintline {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.shootbar { display: flex; gap: 10px; margin-top: 10px; }
+.shootbar button { flex: 1; }
+
+/* ---- список пунктов ---- */
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items > li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.items > li:last-child { border-bottom: 0; }
+ul.items .num {
+  width: 26px; height: 26px; flex: 0 0 26px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 700;
+}
+ul.items > li.current .num { background: var(--accent); border-color: var(--accent); color: #fff; }
+ul.items > li.locked { opacity: .55; }
+ul.items .ttl { font-weight: 600; font-size: 14px; }
+ul.items .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+ul.items .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.progress { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.progress > i { display: block; height: 100%; background: var(--accent); width: 0%; transition: width .25s ease; }
+
+table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.grid th, table.grid td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.grid th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: var(--gap); overflow-x: auto; padding-bottom: 2px; }
+.tabs button { white-space: nowrap; min-height: 36px; padding: 7px 12px; font-size: 13px; }
+.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.skeleton { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-top: 18px; line-height: 1.5; }
+
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="grow">
+    <h1>Фотоконтроль · панель</h1>
+    <div class="sub" id="who">проверка доступа…</div>
+  </div>
+  <button class="sm ghost" id="btnReload" title="Обновить">↻</button>
+</header>
+
+<div id="alert" class="notice err hidden"></div>
+
+<div class="tabs" id="tabs">
+  <button class="active" data-tab="week">Неделя</button>
+  <button data-tab="roles">Роли</button>
+  <button data-tab="machines">Машины</button>
+  <button data-tab="templates">Шаблоны</button>
+</div>
+
+<!-- НЕДЕЛЯ / ПРОВЕРКА -->
+<section id="tab-week">
+  <div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <h2 class="grow" style="margin:0">Статусы недели</h2>
+      <span class="badge info" id="weekKey">—</span>
+    </div>
+    <div class="row wrap small muted" style="margin-bottom:10px">
+      <span id="weekDeadline">срок: —</span>
+      <span>·</span>
+      <label class="row" style="gap:6px">
+        <span class="small muted">неделя</span>
+        <input type="text" id="weekInput" class="mono" style="width:110px;min-height:34px;padding:6px 8px" placeholder="2026-W46">
+      </label>
+      <button class="sm" id="btnWeekGo">Показать</button>
+    </div>
+    <div id="summaryRow" class="row wrap small" style="margin-bottom:10px"></div>
+    <div id="reportsList" class="skeleton">загрузка…</div>
+  </div>
+
+  <div class="card hidden" id="reportCard">
+    <div class="row" style="margin-bottom:8px">
+      <button class="sm ghost" id="btnCloseReport">← К списку</button>
+      <span class="grow"></span>
+      <span class="badge" id="repStatus">—</span>
+    </div>
+    <h2 id="repTitle">—</h2>
+    <div class="muted small" id="repMeta">—</div>
+    <h3>Пункты комплекта</h3>
+    <ul class="items" id="repItems"></ul>
+  </div>
+
+  <div class="card hidden" id="itemCard">
+    <div class="row" style="margin-bottom:8px">
+      <button class="sm ghost" id="btnCloseItem">← К комплекту</button>
+      <span class="grow"></span>
+      <span class="badge" id="itStatus">—</span>
+    </div>
+    <h2 id="itTitle">—</h2>
+    <div class="muted small" id="itHint" style="margin-bottom:10px">—</div>
+    <div class="stage" id="itStage">
+      <img class="preview" id="itPhoto" alt="Фото пункта">
+    </div>
+    <div class="small muted" id="itMeta" style="margin-top:8px">—</div>
+    <div class="notice warn hidden" id="itReasonBox"></div>
+
+    <h3>Решение по пункту</h3>
+    <label class="field">
+      <span>Причина отклонения (обязательна для отклонения)</span>
+      <select id="rejectCode">
+        <option value="">— выберите причину —</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Комментарий (необязательно, водитель увидит текст)</span>
+      <textarea id="reviewComment" maxlength="400" placeholder="Например: переснимите номер без блика"></textarea>
+    </label>
+    <div class="row">
+      <button class="primary grow" id="btnApprove">Принять</button>
+      <button class="danger grow" id="btnReject">Отклонить с причиной</button>
+    </div>
+    <div class="small muted" style="margin-top:8px">
+      Отклонение относится только к этому пункту: водителю будет предложена пересъёмка одного кадра.
+    </div>
+  </div>
+</section>
+
+<!-- РОЛИ -->
+<section id="tab-roles" class="hidden">
+  <div class="card">
+    <h2>Пользователи и роли</h2>
+    <div class="small muted" style="margin-bottom:10px">
+      Идентификация — по Telegram ID. Роль в интерфейсе только отображается: полномочия проверяет сервер.
+    </div>
+    <div id="usersList" class="skeleton">загрузка…</div>
+  </div>
+  <div class="card">
+    <h3>Изменить роли пользователя</h3>
+    <label class="field">
+      <span>Telegram ID или пользователь</span>
+      <select id="roleUser"></select>
+    </label>
+    <div id="roleChecks" class="row wrap" style="gap:8px;margin-bottom:10px"></div>
+    <label class="field">
+      <span>Статус</span>
+      <select id="roleStatus">
+        <option value="active">active — доступ выдан</option>
+        <option value="pending">pending — запрос доступа</option>
+        <option value="blocked">blocked — доступ закрыт</option>
+      </select>
+    </label>
+    <button class="primary wide" id="btnSaveRoles">Сохранить роли</button>
+    <div class="small muted" style="margin-top:8px">Изменение ролей фиксируется в аудит-журнале.</div>
+  </div>
+</section>
+
+<!-- МАШИНЫ -->
+<section id="tab-machines" class="hidden">
+  <div class="card">
+    <h2>Машины</h2>
+    <div id="machinesList" class="skeleton">загрузка…</div>
+  </div>
+  <div class="card">
+    <h3>Привязка водителя к машине</h3>
+    <label class="field"><span>Машина</span><select id="asgCar"></select></label>
+    <label class="field"><span>Водитель</span><select id="asgDriver"></select></label>
+    <label class="field">
+      <span>Роль в машине</span>
+      <select id="asgKind">
+        <option value="primary">основной</option>
+        <option value="backup">подменный</option>
+      </select>
+    </label>
+    <button class="primary wide" id="btnSaveAsg">Привязать</button>
+    <div class="small muted" style="margin-top:8px">Один комплект требует машина, а не водитель: закрывает любой привязанный водитель.</div>
+  </div>
+</section>
+
+<!-- ШАБЛОНЫ -->
+<section id="tab-templates" class="hidden">
+  <div class="card">
+    <h2>Шаблоны комплектов</h2>
+    <div id="templatesList" class="skeleton">загрузка…</div>
+  </div>
+  <div class="card hidden" id="tplCard">
+    <div class="row" style="margin-bottom:8px">
+      <button class="sm ghost" id="btnCloseTpl">← К шаблонам</button>
+      <span class="grow"></span>
+      <span class="badge" id="tplBadge">—</span>
+    </div>
+    <h2 id="tplTitle">—</h2>
+    <div class="muted small" id="tplMeta" style="margin-bottom:10px">—</div>
+    <h3>Пункты и фото-примеры</h3>
+    <ul class="items" id="tplItems"></ul>
+    <div class="small muted" style="margin-top:10px">
+      Изменение шаблона создаёт новую версию и не действует на уже открытые комплекты текущей недели.
+    </div>
+  </div>
+</section>
+
+<footer class="legal">
+  Внутренний контроль парка. Секреты, токены и персональные данные в интерфейсе не отображаются.<br>
+  Все действия выполняются через API с серверной проверкой Telegram initData и ролей.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var ROLES = ["driver", "dispatcher", "mechanic", "manager", "admin"];
+  var ROLE_LABEL = {
+    driver: "Водитель",
+    dispatcher: "Диспетчер",
+    mechanic: "Механик",
+    manager: "Руководитель",
+    admin: "Администратор"
+  };
+  var REJECT_CODES = [
+    ["blur", "Размытое фото"],
+    ["dark", "Слишком темно"],
+    ["glare", "Засветка / блик"],
+    ["low_res", "Низкое разрешение"],
+    ["screen_copy", "Похоже на пересъём с экрана"],
+    ["stale_photo", "Старое фото"],
+    ["car_not_in_frame", "Машина не целиком в кадре"],
+    ["plate_unreadable", "Госномер не читается"],
+    ["other_car_in_frame", "В кадре другая машина"],
+    ["dirty_car", "Машина грязная"],
+    ["interior_clutter", "Мусор / личные вещи в салоне"],
+    ["damage", "Повреждение кузова"],
+    ["trunk_full", "Багажник занят более чем наполовину"],
+    ["wrong_document", "Не тот документ / не оригинал"],
+    ["data_mismatch", "Данные машины не совпадают с профилем"],
+    ["tread_below_norm", "Протектор ниже нормы"],
+    ["other", "Другое (см. комментарий)"]
+  ];
+
+  var state = {
+    initData: "",
+    me: null,
+    weekKey: "",
+    reports: [],
+    report: null,
+    item: null,
+    users: [],
+    machines: [],
+    templates: []
+  };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function setAlert(msg, kind) {
+    var el = $("alert");
+    if (!msg) { el.className = "notice err hidden"; el.textContent = ""; return; }
+    el.className = "notice " + (kind || "err");
+    el.textContent = msg;
+  }
+
+  function can(permission) {
+    // Только индикация доступности кнопок. Авторизация — на сервере.
+    var perms = (state.me && state.me.permissions) || [];
+    return perms.indexOf(permission) !== -1;
+  }
+
+  /* ---------- API ---------- */
+  // Один URL деплоя GAS. Контракт: GET ?action=...&initData=... / POST { action, initData, ... }.
+  // Ошибка приходит телом ok:false + message: ContentService не ставит HTTP-статус.
+  var API_BASE = (function () {
+    try {
+      var custom = window.localStorage.getItem("PILOT_API_BASE");
+      if (custom) return custom;
+    } catch (e) {}
+    // Внутри GAS-iframe адрес страницы — googleusercontent, а API живёт в /exec:
+    // используем адрес, проброшенный сервером (CFG_WEBAPP_URL).
+    if (SERVER_API_BASE && /^https:\/\//.test(SERVER_API_BASE)) return SERVER_API_BASE;
+    return window.location.origin + window.location.pathname;
+  })();
+
+  // Токен доступа из URL кнопки (обход GAS-iframe, где initData не доходит).
+  var PILOT_TOKEN = TG_URL_PARAMS.pilot_token || "";
+
+  function apiCall(action, params, method) {
+    params = params || {};
+    var usePost = method === "POST";
+    var url = API_BASE + (API_BASE.indexOf("?") === -1 ? "?" : "&") + "action=" + encodeURIComponent(action);
+    var options = {
+      method: usePost ? "POST" : "GET",
+      credentials: "omit",
+      cache: "no-store",
+      headers: {}
+    };
+    // Кастомный заголовок с initData на междоменном запросе вызывает CORS-preflight,
+    // который GAS не обслуживает («Failed to fetch» из GAS-iframe). Шлём initData
+    // в теле/query; заголовок ставим только если он реально есть.
+    if (state.initData) options.headers["X-Telegram-Init-Data"] = state.initData;
+
+    if (usePost) {
+      var body = {};
+      Object.keys(params).forEach(function (k) { body[k] = params[k]; });
+      body.action = action;
+      body.initData = state.initData;
+      if (PILOT_TOKEN) body.pilot_token = PILOT_TOKEN;
+      // text/plain вместо application/json: иначе междоменный POST из GAS-iframe
+      // требует CORS-preflight, который GAS не обслуживает. Сервер парсит JSON
+      // из тела независимо от Content-Type.
+      options.headers["Content-Type"] = "text/plain;charset=utf-8";
+      options.body = JSON.stringify(body);
+    } else {
+      Object.keys(params).forEach(function (k) {
+        url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+      });
+      url += "&initData=" + encodeURIComponent(state.initData);
+      if (PILOT_TOKEN) url += "&pilot_token=" + encodeURIComponent(PILOT_TOKEN);
+    }
+
+    return fetch(url, options).then(readJson);
+  }
+
+  function readJson(res) {
+    return res.text().then(function (txt) {
+      var data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      if (data && data.ok === false) {
+        var msg = data.message || data.code || "Операция не выполнена";
+        var err = new Error(msg);
+        err.status = data.status;
+        throw err;
+      }
+      if (!data) {
+        var httpMsg = "Пустой ответ сервера (HTTP " + res.status + ")";
+        if (!res.ok) httpMsg = "Ошибка сервера: HTTP " + res.status;
+        throw new Error(httpMsg);
+      }
+      return data;
+    });
+  }
+
+  /* ---------- старт ---------- */
+  // Параметры, проброшенные сервером из URL кнопки (tgWebAppData, pilot_token).
+  var TG_URL_PARAMS = (function () {
+    var injected = {};
+    try {
+      injected = {};
+    } catch (e) {}
+    var out = {};
+    for (var k in injected) out[k] = injected[k];
+    try {
+      var qs = String(window.location.search || '');
+      var re = /[?&]([a-zA-Z0-9_]+)=([^&]*)/g, m;
+      while ((m = re.exec(qs)) !== null) {
+        var key = decodeURIComponent(m[1]);
+        if (/^(tgWebApp|pilot_token)/.test(key)) {
+          try { out[key] = decodeURIComponent(m[2]); } catch (e2) { out[key] = m[2]; }
+        }
+      }
+    } catch (e) {}
+    return out;
+  })();
+
+  // Настоящий адрес API (CFG_WEBAPP_URL), проброшенный сервером.
+  var SERVER_API_BASE = "https://script.google.com/macros/s/AKfycbwpGIF5M5GApJYiiXC1wzzeXZ7bDnPc79KHHnOCmsvql9Rn9U41G1ebbI8C86Vf7k7t/exec";
+
+  function boot() {
+    var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      try { tg.ready(); tg.expand(); } catch (e) {}
+    }
+    state.initData = (tg && tg.initData) ? tg.initData : (TG_URL_PARAMS.tgWebAppData || "");
+    if (state.initData && tg && !tg.initData) {
+      try {
+        if (TG_URL_PARAMS.tgWebAppPlatform) tg.platform = TG_URL_PARAMS.tgWebAppPlatform;
+      } catch (e) {}
+    }
+    // Одноразовый токен из URL кнопки: GAS-iframe не пропускает initData.
+    if (!state.initData && TG_URL_PARAMS.pilot_token) {
+      bootAuthorized();
+      return;
+    }
+    if (!state.initData) {
+      // GAS оборачивает страницу во вложенный iframe: шлём handshake в window.top.
+      try {
+        if (window.parent && window.parent !== window) window.parent.postMessage({ event: "iframe_ready", params: {} }, "*");
+        if (window.top && window.top !== window) window.top.postMessage({ event: "iframe_ready", params: {} }, "*");
+      } catch (e) {}
+      setTimeout(function () {
+        var t2 = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+        state.initData = (t2 && t2.initData) ? t2.initData : "";
+        if (state.initData) bootAuthorized();
+        else bootDenied(tg);
+      }, 1500);
+      return;
+    }
+    bootAuthorized();
+  }
+
+  function bootDenied(tg) {
+    $("who").textContent = "доступа нет";
+    var diag = "Платформа: " + (tg && tg.platform ? tg.platform : "нет WebApp");
+    diag += "\ninitData: " + (state.initData ? "есть (" + state.initData.length + " симв.)" : "пусто");
+    setAlert("Нет Telegram initData. Панель открывается только из Telegram: сервер отклонит запрос без подписи.\n\n(диагностика)\n" + diag, "err");
+    ["reportsList", "usersList", "machinesList", "templatesList"].forEach(function (id) {
+      $(id).textContent = "Требуется авторизация Telegram.";
+    });
+  }
+
+  function bootAuthorized() {
+    apiCall("me").then(function (data) {
+      state.me = data.user || {};
+      var roles = (state.me.roles || []).map(function (r) { return ROLE_LABEL[r] || r; }).join(", ");
+      $("who").textContent = (state.me.displayName || "сотрудник") + " · " + (roles || "без ролей");
+      state.weekKey = data.currentWeek || "";
+      $("weekInput").value = state.weekKey;
+      fillRejectCodes();
+      return Promise.all([loadWeek(state.weekKey), loadUsers(), loadMachines(), loadTemplates()]);
+    }).catch(function (e) {
+      $("who").textContent = "доступа нет";
+      setAlert(e.message || "Авторизация не пройдена", "err");
+    });
+  }
+
+  /* ---------- вкладки ---------- */
+  Array.prototype.forEach.call($("tabs").querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () {
+      var tab = b.getAttribute("data-tab");
+      Array.prototype.forEach.call($("tabs").querySelectorAll("button"), function (x) {
+        x.classList.toggle("active", x === b);
+      });
+      ["week", "roles", "machines", "templates"].forEach(function (t) {
+        $("tab-" + t).classList.toggle("hidden", t !== tab);
+      });
+      setAlert("");
+      window.scrollTo(0, 0);
+    });
+  });
+
+  /* ---------- неделя ---------- */
+  function loadWeek(weekKey) {
+    var params = weekKey ? { week: weekKey } : {};
+    return apiCall("admin_reports", params).then(function (data) {
+      state.weekKey = data.weekKey || weekKey || state.weekKey;
+      $("weekKey").textContent = state.weekKey || "—";
+      $("weekDeadline").textContent = "срок: " + (data.deadlineText || "—");
+      state.reports = data.reports || [];
+      renderSummary(data.summary || {});
+      renderWeekList();
+    }).catch(function (e) {
+      setAlert(e.message, "err");
+      $("reportsList").className = "skeleton";
+      $("reportsList").textContent = "Не удалось загрузить статусы недели.";
+    });
+  }
+
+  function renderSummary(s) {
+    var parts = [
+      ["машин", s.machines],
+      ["принято", s.approved],
+      ["отправлено", s.submitted],
+      ["на проверке", s.pending],
+      ["нужна пересъёмка", s.needsReshoot],
+      ["просрочено", s.missed]
+    ];    $("summaryRow").innerHTML = parts.map(function (p) {
+      return '<span class="badge">' + esc(p[0]) + ": " + esc(p[1] == null ? 0 : p[1]) + "</span>";
+    }).join("");
+  }
+
+  // Единый словарь статусов отчёта: open | partial | submitted | approved | rejected.
+  function statusBadge(s) {
+    var map = {
+      open: ["badge warn", "не начат"],
+      partial: ["badge warn", "частично"],
+      submitted: ["badge info", "на проверке"],
+      approved: ["badge ok", "принят"],
+      rejected: ["badge err", "нужна пересъёмка"],
+      accepted: ["badge ok", "принят"],
+      uploaded: ["badge info", "на проверке"],
+      empty: ["badge", "не снят"]
+    };
+    var v = map[s] || ["badge", s || "—"];
+    return '<span class="' + v[0] + '">' + esc(v[1]) + "</span>";
+  }
+
+  function renderWeekList() {
+    var host = $("reportsList");
+    if (!state.reports.length) {
+      host.className = "skeleton";
+      host.textContent = "За эту неделю комплектов нет.";
+      return;
+    }
+    host.className = "";
+    var html = '<table class="grid"><thead><tr>' +
+      "<th>Машина</th><th>Водитель</th><th>Шаблон</th><th>Готово</th><th>Статус</th><th></th>" +
+      "</tr></thead><tbody>";
+    state.reports.forEach(function (r) {
+      html += "<tr>" +
+        "<td><b>" + esc(r.carNo || "—") + "</b></td>" +
+        "<td>" + esc(r.driverName || "—") + "</td>" +
+        "<td>" + esc(r.templateTitle || "—") + "</td>" +
+        "<td>" + esc((r.doneCount || 0) + "/" + (r.totalCount || 0)) + "</td>" +
+        "<td>" + statusBadge(r.status) + "</td>" +
+        '<td><button class="sm primary" data-open-report="' + esc(r.reportId) + '">Пункты</button></td>' +
+      "</tr>";
+    });
+    html += "</tbody></table>";
+    host.innerHTML = html;
+    Array.prototype.forEach.call(host.querySelectorAll("[data-open-report]"), function (b) {
+      b.addEventListener("click", function () { openReport(b.getAttribute("data-open-report")); });
+    });
+  }
+
+  function openReport(reportId) {
+    return apiCall("admin_report", { reportId: reportId }).then(function (data) {
+      state.report = data.report || null;
+      if (!state.report) throw new Error("Комплект не найден");
+      renderReport();
+      $("reportCard").classList.remove("hidden");
+      $("itemCard").classList.add("hidden");
+      $("reportCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function (e) { setAlert(e.message, "err"); });
+  }
+
+  function renderReport() {
+    var r = state.report;
+    $("repTitle").textContent = (r.templateTitle || "Комплект") + " · " + (r.carNo || "");
+    $("repMeta").textContent = (r.weekKey || "") + " · " + (r.driverName || "—") + " · срок: " + (r.deadlineText || "—");
+    $("repStatus").className = "badge";
+    var items = r.items || [];
+    if (!items.length) {
+      $("repItems").innerHTML = '<li><div class="grow muted">В комплекте нет пунктов.</div></li>';
+      return;
+    }
+    var html = "";
+    items.forEach(function (it, idx) {
+      html += "<li>" +
+        '<div class="num">' + (idx + 1) + "</div>" +
+        '<div class="grow">' +
+          '<div class="ttl">' + esc(it.title || it.code) + "</div>" +
+          '<div class="hint">' + esc(it.hint || "") + "</div>" +
+          '<div class="actions">' + statusBadge(it.status) +
+            (it.rejectReasonText ? '<span class="badge err">' + esc(it.rejectReasonText) + "</span>" : "") +
+            (it.status && it.status !== "empty"
+              ? '<button class="sm primary" data-item="' + idx + '">Открыть пункт</button>'
+              : '<span class="small muted">кадр не снят</span>') +
+          "</div>" +
+        "</div>" +
+      "</li>";
+    });
+    $("repItems").innerHTML = html;
+    Array.prototype.forEach.call($("repItems").querySelectorAll("[data-item]"), function (b) {
+      b.addEventListener("click", function () { openItem(parseInt(b.getAttribute("data-item"), 10)); });
+    });
+  }
+
+  function openItem(idx) {
+    var items = (state.report && state.report.items) || [];
+    var it = items[idx];
+    if (!it) return;
+    state.item = it;
+    setAlert("");
+    $("itTitle").textContent = it.title || it.code;
+    $("itHint").textContent = it.hint || "";
+    $("itStatus").className = "badge";
+    $("itStatus").textContent = it.status || "—";
+    var photo = $("itPhoto");
+    if (it.photoUrl) { photo.src = it.photoUrl; photo.classList.remove("hidden"); }
+    else { photo.removeAttribute("src"); photo.classList.add("hidden"); }
+    $("itStage").classList.toggle("hidden", !it.photoUrl);
+    $("itMeta").textContent = [
+      it.uploadedAt ? "снято: " + it.uploadedAt : "",
+      it.version ? "версия: v" + it.version : "",
+      it.uploadedBy ? "кем: " + it.uploadedBy : ""
+    ].filter(Boolean).join(" · ") || "—";
+
+    var rb = $("itReasonBox");
+    if (it.rejectReasonText) {
+      rb.className = "notice warn";
+      rb.textContent = "Уже отклонено: " + it.rejectReasonText +
+        (it.reviewComment ? " — " + it.reviewComment : "") + ". Пересъёмка этого пункта запрошена.";
+      rb.classList.remove("hidden");
+    } else {
+      rb.classList.add("hidden");
+    }
+
+    $("reviewComment").value = "";
+    $("rejectCode").value = "";
+    $("btnApprove").disabled = !can("photo.review");
+    $("btnReject").disabled = !can("photo.review");
+
+    $("itemCard").classList.remove("hidden");
+    $("itemCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function fillRejectCodes() {
+    $("rejectCode").innerHTML = '<option value="">— выберите причину —</option>' +
+      REJECT_CODES.map(function (p) {
+        return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + "</option>";
+      }).join("");
+  }
+
+  function approve() {
+    if (!state.item || !state.report) return;
+    if (!can("photo.review")) { setAlert("У ваших ролей нет права проверять фото", "err"); return; }
+    $("btnApprove").disabled = true;
+    apiCall("admin_review", {
+      reportId: state.report.reportId,
+      itemId: state.item.itemId,
+      decision: "approve",
+      comment: $("reviewComment").value.trim()
+    }, "POST").then(function () {
+      setAlert("Пункт принят.", "ok");
+      return refreshAfterReview();
+    }).catch(function (e) {
+      $("btnApprove").disabled = false;
+      setAlert("Не удалось принять: " + e.message, "err");
+    });
+  }
+
+  function reject() {
+    if (!state.item || !state.report) return;
+    if (!can("photo.review")) { setAlert("У ваших ролей нет права проверять фото", "err"); return; }
+    var code = $("rejectCode").value;
+    if (!code) { setAlert("Выберите причину отклонения", "err"); return; }
+    $("btnReject").disabled = true;
+    apiCall("admin_review", {
+      reportId: state.report.reportId,
+      itemId: state.item.itemId,
+      decision: "reject",
+      reasonCode: code,
+      comment: $("reviewComment").value.trim()
+    }, "POST").then(function () {
+      setAlert("Пункт отклонён: водителю запрошена пересъёмка только этого кадра.", "ok");
+      return refreshAfterReview();
+    }).catch(function (e) {
+      $("btnReject").disabled = false;
+      setAlert("Не удалось отклонить: " + e.message, "err");
+    });
+  }
+
+  function refreshAfterReview() {
+    var reportId = state.report.reportId;
+    return Promise.all([loadWeek(state.weekKey), apiCall("admin_report", { reportId: reportId })])
+      .then(function (res) {
+        state.report = res[1].report || state.report;
+        renderReport();
+        $("itemCard").classList.add("hidden");
+        $("btnApprove").disabled = !can("photo.review");
+        $("btnReject").disabled = !can("photo.review");
+      });
+  }
+
+  /* ---------- роли ---------- */
+  function loadUsers() {
+    return apiCall("admin_users").then(function (data) {
+      state.users = data.users || [];
+      renderUsers();
+      renderRoleEditor();
+    }).catch(function (e) {
+      $("usersList").className = "skeleton";
+      $("usersList").textContent = "Пользователи недоступны: " + e.message;
+    });
+  }
+
+  function renderUsers() {
+    var host = $("usersList");
+    if (!state.users.length) {
+      host.className = "skeleton";
+      host.textContent = "Пользователей нет.";
+      return;
+    }
+    host.className = "";
+    var html = '<table class="grid"><thead><tr><th>Сотрудник</th><th>TG ID</th><th>Роли</th><th>Статус</th></tr></thead><tbody>';
+    state.users.forEach(function (u) {
+      var roles = (u.roles || []).map(function (r) { return ROLE_LABEL[r] || r; }).join(", ") || "—";
+      html += "<tr>" +
+        "<td>" + esc(u.displayName || "—") + "</td>" +
+        '<td class="mono">' + esc(u.telegramUserId || "—") + "</td>" +
+        "<td>" + esc(roles) + "</td>" +
+        '<td><span class="badge ' + (u.status === "active" ? "ok" : u.status === "blocked" ? "err" : "warn") + '">' +
+          esc(u.status || "—") + "</span></td>" +
+      "</tr>";
+    });
+    html += "</tbody></table>";
+    host.innerHTML = html;
+  }
+
+  function renderRoleEditor() {
+    var sel = $("roleUser");
+    sel.innerHTML = '<option value="">— выберите —</option>' + state.users.map(function (u) {
+      return '<option value="' + esc(u.userId) + '">' +
+        esc((u.displayName || "—") + " · " + (u.telegramUserId || "")) + "</option>";
+    }).join("");
+
+    $("roleChecks").innerHTML = ROLES.map(function (r) {
+      return '<label class="row" style="gap:6px;min-height:34px">' +
+        '<input type="checkbox" data-role="' + r + '" style="width:20px;min-height:auto" >' +
+        "<span>" + esc(ROLE_LABEL[r]) + "</span></label>";
+    }).join("");
+  }
+
+  function saveRoles() {
+    var userId = $("roleUser").value;
+    if (!userId) { setAlert("Выберите пользователя", "err"); return; }
+    if (!can("user.manage")) { setAlert("Нет права управлять пользователями", "err"); return; }
+    var picked = [];
+    Array.prototype.forEach.call($("roleChecks").querySelectorAll("input[data-role]"), function (cb) {
+      if (cb.checked) picked.push(cb.getAttribute("data-role"));
+    });
+    if (!picked.length) { setAlert("У пользователя должна остаться хотя бы одна роль или статус blocked", "err"); return; }
+    $("btnSaveRoles").disabled = true;
+    apiCall("admin_roles", {
+      userId: userId,
+      roles: picked,
+      status: $("roleStatus").value
+    }, "POST").then(function () {
+      setAlert("Роли сохранены и записаны в аудит.", "ok");
+      $("btnSaveRoles").disabled = false;
+      return loadUsers();
+    }).catch(function (e) {
+      $("btnSaveRoles").disabled = false;
+      setAlert("Не удалось сохранить роли: " + e.message, "err");
+    });
+  }
+
+  $("roleUser").addEventListener("change", function () {
+    var userId = $("roleUser").value;
+    var u = state.users.filter(function (x) { return x.userId === userId; })[0];
+    Array.prototype.forEach.call($("roleChecks").querySelectorAll("input[data-role]"), function (cb) {
+      cb.checked = !!(u && (u.roles || []).indexOf(cb.getAttribute("data-role")) !== -1);
+    });
+    $("roleStatus").value = (u && u.status) || "active";
+  });
+
+  /* ---------- машины ---------- */
+  function loadMachines() {
+    return apiCall("admin_machines").then(function (data) {
+      state.machines = data.machines || [];
+      renderMachines();
+      fillAssignmentSelectors();
+    }).catch(function (e) {
+      $("machinesList").className = "skeleton";
+      $("machinesList").textContent = "Машины недоступны: " + e.message;
+    });
+  }
+
+  function renderMachines() {
+    var host = $("machinesList");
+    if (!state.machines.length) {
+      host.className = "skeleton";
+      host.textContent = "Машин нет.";
+      return;
+    }
+    host.className = "";
+    var html = '<table class="grid"><thead><tr><th>Номер</th><th>Госномер</th><th>Водители</th><th>Шаблоны</th><th>Статус</th></tr></thead><tbody>';
+    state.machines.forEach(function (m) {
+      var drivers = (m.drivers || []).map(function (d) {
+        return (d.displayName || d.telegramUserId || "—") + (d.kind === "backup" ? " (подменный)" : "");
+      }).join(", ") || "— нет привязки —";
+      var tpls = (m.templateCodes || []).join(", ") || "—";
+      html += "<tr>" +
+        "<td><b>" + esc(m.carNo || "—") + "</b></td>" +
+        "<td>" + esc(m.plate || "—") + "</td>" +
+        "<td" + (m.drivers && m.drivers.length ? "" : ' class="muted"') + ">" + esc(drivers) + "</td>" +
+        "<td>" + esc(tpls) + "</td>" +
+        '<td><span class="badge ' + (m.status === "active" ? "ok" : "") + '">' + esc(m.status || "—") + "</span></td>" +
+      "</tr>";
+    });
+    html += "</tbody></table>";
+    host.innerHTML = html;
+  }
+
+  function fillAssignmentSelectors() {
+    $("asgCar").innerHTML = state.machines.map(function (m) {
+      return '<option value="' + esc(m.carId) + '">' + esc((m.carNo || "") + " · " + (m.plate || "")) + "</option>";
+    }).join("");
+    var drivers = state.users.filter(function (u) {
+      return (u.roles || []).indexOf("driver") !== -1;
+    });
+    $("asgDriver").innerHTML = drivers.length
+      ? drivers.map(function (u) {
+          return '<option value="' + esc(u.userId) + '">' + esc(u.displayName || u.telegramUserId) + "</option>";
+        }).join("")
+      : '<option value="">нет пользователей с ролью «Водитель»</option>';
+  }
+
+  function saveAssignment() {
+    if (!can("assignment.manage")) { setAlert("Нет права управлять привязками", "err"); return; }
+    var carId = $("asgCar").value, driverUserId = $("asgDriver").value;
+    if (!carId || !driverUserId) { setAlert("Выберите машину и водителя", "err"); return; }
+    $("btnSaveAsg").disabled = true;
+    apiCall("admin_assignments", {
+      carId: carId,
+      driverUserId: driverUserId,
+      kind: $("asgKind").value
+    }, "POST").then(function () {
+      setAlert("Привязка сохранена и записана в аудит.", "ok");
+      $("btnSaveAsg").disabled = false;
+      return loadMachines();
+    }).catch(function (e) {
+      $("btnSaveAsg").disabled = false;
+      setAlert("Не удалось привязать: " + e.message, "err");
+    });
+  }
+
+  /* ---------- шаблоны ---------- */
+  function loadTemplates() {
+    return apiCall("admin_templates").then(function (data) {
+      state.templates = data.templates || [];
+      renderTemplates();
+    }).catch(function (e) {
+      $("templatesList").className = "skeleton";
+      $("templatesList").textContent = "Шаблоны недоступны: " + e.message;
+    });
+  }
+
+  function renderTemplates() {
+    var host = $("templatesList");
+    if (!state.templates.length) {
+      host.className = "skeleton";
+      host.textContent = "Шаблонов нет.";
+      return;
+    }
+    host.className = "";
+    var html = '<table class="grid"><thead><tr><th>Шаблон</th><th>Периодичность</th><th>Пунктов</th><th>Версия</th><th></th></tr></thead><tbody>';
+    state.templates.forEach(function (t) {
+      html += "<tr>" +
+        "<td><b>" + esc(t.title || t.code) + '</b><div class="small muted mono">' + esc(t.code || "") + "</div></td>" +
+        "<td>" + esc(t.periodicityLabel || t.periodicity || "—") + "</td>" +
+        "<td>" + esc(t.itemCount == null ? (t.items || []).length : t.itemCount) + "</td>" +
+        "<td>v" + esc(t.version || 1) + (t.active === false ? ' <span class="badge warn">выкл</span>' : "") + "</td>" +
+        '<td><button class="sm primary" data-tpl="' + esc(t.templateId || t.code) + '">Пункты</button></td>' +
+      "</tr>";
+    });
+    html += "</tbody></table>";
+    host.innerHTML = html;
+    Array.prototype.forEach.call(host.querySelectorAll("[data-tpl]"), function (b) {
+      b.addEventListener("click", function () { openTemplate(b.getAttribute("data-tpl")); });
+    });
+  }
+
+  function openTemplate(id) {
+    var t = state.templates.filter(function (x) { return (x.templateId || x.code) === id; })[0];
+    if (!t) return;
+    setAlert("");
+    $("tplTitle").textContent = t.title || t.code;
+    $("tplMeta").textContent = [t.code, "v" + (t.version || 1), t.periodicityLabel || t.periodicity || ""]
+      .filter(Boolean).join(" · ");
+    $("tplBadge").textContent = t.active === false ? "выключен" : "активен";
+    $("tplBadge").className = "badge " + (t.active === false ? "warn" : "ok");
+
+    var items = t.items || [];
+    if (!items.length) {
+      $("tplItems").innerHTML = '<li><div class="grow muted">Пункты не заданы.</div></li>';
+    } else {
+      $("tplItems").innerHTML = items.map(function (it, idx) {
+        var example = it.exampleUrl
+          ? '<img src="' + esc(it.exampleUrl) + '" alt="пример" style="width:74px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">'
+          : '<div class="small muted" style="width:74px">нет примера</div>';
+        return "<li>" +
+          '<div class="num">' + (idx + 1) + "</div>" +
+          example +
+          '<div class="grow">' +
+            '<div class="ttl">' + esc(it.title || it.code) + "</div>" +
+            '<div class="hint">' + esc(it.hint || "") + "</div>" +
+            '<div class="actions">' +
+              '<span class="badge">' + (it.required === false ? "необязательный" : "обязательный") + "</span>" +
+              '<span class="badge mono">' + esc(it.code || "") + "</span>" +
+            "</div>" +
+          "</div>" +
+        "</li>";
+      }).join("");
+    }
+    $("tplCard").classList.remove("hidden");
+    $("tplCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /* ---------- события ---------- */
+  $("btnReload").addEventListener("click", function () {
+    setAlert("");
+    loadWeek($("weekInput").value.trim() || state.weekKey);
+    loadUsers(); loadMachines(); loadTemplates();
+  });
+  $("btnWeekGo").addEventListener("click", function () {
+    var w = $("weekInput").value.trim();
+    if (!/^\d{4}-W\d{2}$/.test(w)) { setAlert("Формат недели: 2026-W46", "err"); return; }
+    setAlert("");
+    loadWeek(w);
+  });
+  $("btnCloseReport").addEventListener("click", function () { $("reportCard").classList.add("hidden"); });
+  $("btnCloseItem").addEventListener("click", function () { $("itemCard").classList.add("hidden"); });
+  $("btnCloseTpl").addEventListener("click", function () { $("tplCard").classList.add("hidden"); });
+  $("btnApprove").addEventListener("click", approve);
+  $("btnReject").addEventListener("click", reject);
+  $("btnSaveRoles").addEventListener("click", saveRoles);
+  $("btnSaveAsg").addEventListener("click", saveAssignment);
+
+  boot();
+})();
+</script>
+</body>
+</html>

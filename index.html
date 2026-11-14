@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Фотоконтроль — водитель</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+﻿<style>
+/* Пилот фотоконтроля 476 group — общие стили Mini Apps (vanilla CSS, без сборки) */
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1f232c;
+  --line: #2b3140;
+  --text: #e8ecf3;
+  --muted: #9aa4b5;
+  --accent: #2f7cf6;
+  --accent-2: #1d5fd1;
+  --ok: #1f9d55;
+  --warn: #d08700;
+  --err: #d64545;
+  --radius: 14px;
+  --gap: 12px;
+  --hint: #ffd166;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f2f4f8;
+    --panel: #ffffff;
+    --panel-2: #eef1f6;
+    --line: #d5dbe6;
+    --text: #14181f;
+    --muted: #5b6676;
+    --hint: #8a6100;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body { padding: 12px 12px 28px; max-width: 720px; margin: 0 auto; }
+
+header.appbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--gap);
+}
+
+header.appbar h1 { font-size: 17px; margin: 0; flex: 1; font-weight: 650; }
+header.appbar .sub { color: var(--muted); font-size: 12px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: var(--gap);
+}
+
+.card h2 { font-size: 15px; margin: 0 0 10px; font-weight: 650; }
+.card h3 { font-size: 13px; margin: 14px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row.wrap { flex-wrap: wrap; }
+.grow { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.hidden { display: none !important; }
+
+button, .btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+button:active, .btn:active { transform: translateY(1px); }
+button[disabled] { opacity: .45; cursor: not-allowed; }
+button.primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:active { background: var(--accent-2); }
+button.danger { background: var(--err); border-color: var(--err); color: #fff; }
+button.ghost { background: transparent; }
+button.wide { width: 100%; }
+button.sm { padding: 7px 10px; min-height: 34px; font-size: 13px; font-weight: 600; }
+
+input[type="text"], input[type="number"], input[type="file"], select, textarea {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  min-height: 44px;
+}
+textarea { min-height: 76px; resize: vertical; }
+label.field { display: block; margin-bottom: 10px; }
+label.field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+.badge.ok { background: rgba(31,157,85,.16); border-color: rgba(31,157,85,.5); color: #2ec27e; }
+.badge.warn { background: rgba(208,135,0,.16); border-color: rgba(208,135,0,.5); color: #e0a020; }
+.badge.err { background: rgba(214,69,69,.16); border-color: rgba(214,69,69,.5); color: #ff6b6b; }
+.badge.info { background: rgba(47,124,246,.16); border-color: rgba(47,124,246,.5); color: #7aa8ff; }
+
+.notice {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: var(--gap);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.notice.err { border-color: rgba(214,69,69,.55); background: rgba(214,69,69,.12); }
+.notice.ok { border-color: rgba(31,157,85,.55); background: rgba(31,157,85,.12); }
+.notice.warn { border-color: rgba(208,135,0,.55); background: rgba(208,135,0,.12); }
+
+/* ---- камера ---- */
+.stage {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+.stage video, .stage img.preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stage img.example { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #05070a; }
+.overlay {
+  position: absolute;
+  inset: 6% 5%;
+  border: 3px dashed var(--hint);
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35);
+}
+.overlay .corner { position: absolute; width: 18px; height: 18px; border: 3px solid var(--hint); }
+.overlay .corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; }
+.overlay .corner.tr { top: -3px; right: -3px; border-left: 0; border-bottom: 0; }
+.overlay .corner.bl { bottom: -3px; left: -3px; border-right: 0; border-top: 0; }
+.overlay .corner.br { bottom: -3px; right: -3px; border-left: 0; border-top: 0; }
+.overlay-label {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, .62);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.stage .hintline {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.shootbar { display: flex; gap: 10px; margin-top: 10px; }
+.shootbar button { flex: 1; }
+
+/* ---- список пунктов ---- */
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items > li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.items > li:last-child { border-bottom: 0; }
+ul.items .num {
+  width: 26px; height: 26px; flex: 0 0 26px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 700;
+}
+ul.items > li.current .num { background: var(--accent); border-color: var(--accent); color: #fff; }
+ul.items > li.locked { opacity: .55; }
+ul.items .ttl { font-weight: 600; font-size: 14px; }
+ul.items .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+ul.items .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.progress { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+.progress > i { display: block; height: 100%; background: var(--accent); width: 0%; transition: width .25s ease; }
+
+table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.grid th, table.grid td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.grid th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: var(--gap); overflow-x: auto; padding-bottom: 2px; }
+.tabs button { white-space: nowrap; min-height: 36px; padding: 7px 12px; font-size: 13px; }
+.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.skeleton { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-top: 18px; line-height: 1.5; }
+
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="grow">
+    <h1>Фотоконтроль · водитель</h1>
+    <div class="sub" id="who">проверка доступа…</div>
+  </div>
+  <button class="sm ghost" id="btnReload" title="Обновить">↻</button>
+</header>
+
+<div id="alert" class="notice err hidden"></div>
+
+<!-- ЭКРАН 1: комплекты -->
+<section class="card" id="screenReports">
+  <div class="row" style="margin-bottom:10px">
+    <h2 class="grow" style="margin:0">Мои комплекты</h2>
+    <span class="badge info" id="weekBadge">—</span>
+  </div>
+  <div id="reportsList" class="skeleton">загрузка…</div>
+</section>
+
+<!-- ЭКРАН 2: комплект -->
+<section class="card hidden" id="screenReport">
+  <div class="row" style="margin-bottom:6px">
+    <button class="sm ghost" id="btnBackReports">← Назад</button>
+    <span class="grow"></span>
+    <span class="badge" id="reportStatus">—</span>
+  </div>
+  <h2 id="reportTitle">—</h2>
+  <div class="muted small" id="reportMeta">—</div>
+  <div class="progress" style="margin:10px 0 4px"><i id="reportProgress"></i></div>
+  <div class="small muted" id="reportCount">—</div>
+  <h3>Пункты комплекта</h3>
+  <ul class="items" id="itemsList"></ul>
+</section>
+
+<!-- ЭКРАН 3: съёмка пункта -->
+<section class="card hidden" id="screenShot">
+  <div class="row" style="margin-bottom:10px">
+    <button class="sm ghost" id="btnBackReport">← К комплекту</button>
+    <span class="grow"></span>
+    <span class="badge" id="shotIndex">—</span>
+  </div>
+
+  <h2 id="shotTitle">—</h2>
+  <div class="muted small" id="shotHint" style="margin-bottom:10px">—</div>
+
+  <div class="tabs" id="shotTabs">
+    <button class="active" data-tab="example">Фото-пример</button>
+    <button data-tab="camera">Камера</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <img class="example" id="exampleImg" alt="Фото-пример кадра" src="">
+    <video id="cam" class="hidden" autoplay playsinline muted></video>
+    <img class="preview hidden" id="shotPreview" alt="Снятый кадр">
+    <div class="overlay hidden" id="overlay">
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+      <span class="overlay-label">машина целиком в рамке · один кадр за раз</span>
+    </div>
+    <div class="hintline hidden" id="stageHint">держите ровно: не пересъём с экрана</div>
+  </div>
+
+  <div class="notice warn hidden" id="camNotice"></div>
+
+  <div class="shootbar">
+    <button class="primary" id="btnStartCam">Включить камеру</button>
+    <button id="btnCapture" disabled>Снять</button>
+  </div>
+
+  <label class="field" style="margin-top:10px">
+    <span>Нет камеры или нужен снимок из галереи (запасной способ)</span>
+    <input type="file" id="fileFallback" accept="image/*">
+  </label>
+
+  <div class="row">
+    <button class="wide primary" id="btnUpload" disabled>Отправить кадр</button>
+  </div>
+  <div class="small muted" id="shotStatus" style="margin-top:8px">—</div>
+  <canvas id="canvas" class="hidden"></canvas>
+</section>
+
+<footer class="legal">
+  Это внутренний фото-контроль техники парка.<br>
+  Доступ определяется на сервере по Telegram initData.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Параметры, проброшенные сервером из URL кнопки. GAS-iframe не пропускает
+  // initData Telegram, поэтому сервер вшивает в URL кнопки одноразовый
+  // pilot_token (привязан к Telegram ID, живёт 1 час) — им и авторизуемся.
+  var TG_URL_PARAMS = (function () {
+    var injected = {};
+    try {
+      injected = {};
+    } catch (e) {}
+    var out = {};
+    for (var k in injected) out[k] = injected[k];
+    try {
+      var qs = String(window.location.search || '');
+      var re = /[?&]([a-zA-Z0-9_]+)=([^&]*)/g, m;
+      while ((m = re.exec(qs)) !== null) {
+        var key = decodeURIComponent(m[1]);
+        if (/^(tgWebApp|pilot_token)/.test(key)) {
+          try { out[key] = decodeURIComponent(m[2]); } catch (e2) { out[key] = m[2]; }
+        }
+      }
+    } catch (e) {}
+    return out;
+  })();
+
+  // Настоящий адрес API: внутри GAS-iframe location.host — googleusercontent,
+  // поэтому адрес берём от сервера (или localStorage для ручной настройки).
+  var SERVER_API_BASE = "https://script.google.com/macros/s/AKfycbwpGIF5M5GApJYiiXC1wzzeXZ7bDnPc79KHHnOCmsvql9Rn9U41G1ebbI8C86Vf7k7t/exec";
+
+  /* ---------- утилиты ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var state = {
+    initData: "",
+    me: null,
+    reports: [],
+    report: null,
+    shot: null,
+    shotIndex: -1,
+    stream: null,
+    draftBlob: null,
+    draftSource: "",
+    busy: false,
+    currentTab: "example"
+  };
+
+  function setAlert(msg, kind) {
+    var el = $("alert");
+    if (!msg) { el.classList.add("hidden"); el.textContent = ""; return; }
+    el.className = "notice " + (kind || "err");
+    el.textContent = msg;
+  }
+
+  function show(screenId) {
+    ["screenReports", "screenReport", "screenShot"].forEach(function (id) {
+      $(id).classList.toggle("hidden", id !== screenId);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function stopCam() {
+    if (state.stream) {
+      state.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+      state.stream = null;
+    }
+    $("cam").classList.add("hidden");
+  }
+
+  // Единый словарь статусов отчёта: open | partial | submitted | approved | rejected.
+  function fmtStatus(s) {
+    var map = {
+      open: "не начат",
+      partial: "частично",
+      submitted: "на проверке",
+      approved: "принят",
+      rejected: "нужна пересъёмка"
+    };
+    return map[s] || s || "—";
+  }
+
+  function statusClass(s) {
+    if (s === "approved") return "badge ok";
+    if (s === "rejected") return "badge err";
+    if (s === "submitted") return "badge info";
+    return "badge warn";
+  }
+
+  // Единый словарь статусов пункта: empty | uploaded | accepted | rejected.
+  function itemStatusClass(s) {
+    if (s === "accepted" || s === "uploaded") return "badge ok";
+    if (s === "rejected") return "badge err";
+    return "badge";
+  }
+
+  function itemStatusText(s) {
+    var map = {
+      empty: "не снят",
+      uploaded: "на проверке",
+      accepted: "принят",
+      rejected: "отклонён"
+    };
+    return map[s] || s || "не снят";
+  }
+
+  /* ---------- серверный API ---------- */
+  // ВАЖНО: единственное доказательство личности — initData, которое сервер проверяет
+  // HMAC-подписью. Роль/машины приходят ТОЛЬКО из ответа сервера, клиент их не решает.
+  //
+  // Контракт: один URL деплоя GAS.
+  //  - чтение:  GET  <BASE>?action=<name>&initData=...&<params>
+  //  - запись:  POST <BASE> с JSON { action, initData, ...payload }
+  // Ошибка — ok:false и message: ContentService не выставляет HTTP-статус,
+  // поэтому res.ok проверять НЕДОСТАТОЧНО.
+  var API_BASE = (function () {
+    // Для локальной разработки значение задаётся через localStorage.
+    try {
+      var custom = window.localStorage.getItem("PILOT_API_BASE");
+      if (custom) return custom;
+    } catch (e) {}
+    // Внутри GAS-iframe адрес страницы — googleusercontent, а API живёт в /exec:
+    // используем адрес, проброшенный сервером (CFG_WEBAPP_URL).
+    if (SERVER_API_BASE && /^https:\/\//.test(SERVER_API_BASE)) return SERVER_API_BASE;
+    // Запасной путь: этот же web app (работает, если iframe нет).
+    return window.location.origin + window.location.pathname;
+  })();
+
+  // Токен доступа из URL кнопки (обход GAS-iframe, где initData не доходит).
+  var PILOT_TOKEN = TG_URL_PARAMS.pilot_token || "";
+
+  function apiCall(action, params, method) {
+    params = params || {};
+    var usePost = method === "POST";
+    var url = API_BASE + (API_BASE.indexOf("?") === -1 ? "?" : "&") + "action=" + encodeURIComponent(action);
+    var options = {
+      method: usePost ? "POST" : "GET",
+      credentials: "omit",
+      cache: "no-store",
+      headers: {}
+    };
+    // Кастомный заголовок с initData на междоменном запросе вызывает CORS-preflight,
+    // который GAS не обслуживает («Failed to fetch» из GAS-iframe). Шлём initData
+    // в теле/query; заголовок ставим только если он реально есть.
+    if (state.initData) options.headers["X-Telegram-Init-Data"] = state.initData;
+
+    if (usePost) {
+      var body = {};
+      Object.keys(params).forEach(function (k) { body[k] = params[k]; });
+      body.action = action;
+      body.initData = state.initData;
+      if (PILOT_TOKEN) body.pilot_token = PILOT_TOKEN;
+      // text/plain вместо application/json: иначе междоменный POST из GAS-iframe
+      // требует CORS-preflight, который GAS не обслуживает. Сервер парсит JSON
+      // из тела независимо от Content-Type.
+      options.headers["Content-Type"] = "text/plain;charset=utf-8";
+      options.body = JSON.stringify(body);
+    } else {
+      Object.keys(params).forEach(function (k) {
+        url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+      });
+      url += "&initData=" + encodeURIComponent(state.initData);
+      if (PILOT_TOKEN) url += "&pilot_token=" + encodeURIComponent(PILOT_TOKEN);
+    }
+
+    return fetch(url, options).then(readJson);
+  }
+
+  function readJson(res) {
+    return res.text().then(function (txt) {
+      var data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+      // Сервер не может выставить HTTP-статус: смотрим только тело ответа.
+      if (data && data.ok === false) {
+        var msg = data.message || data.code || "Операция не выполнена";
+        var err = new Error(msg);
+        err.status = data.status;
+        throw err;
+      }
+      if (!data) {
+        var httpMsg = "Пустой ответ сервера (HTTP " + res.status + ")";
+        if (!res.ok) httpMsg = "Ошибка сервера: HTTP " + res.status;
+        throw new Error(httpMsg);
+      }
+      return data;
+    });
+  }
+
+  /* ---------- авторизация ---------- */
+  function boot() {
+    var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        if (tg.setHeaderColor) tg.setHeaderColor("#0f1115");
+      } catch (e) {}
+    }
+
+    // initData берём из Telegram WebApp; НЕ подставляем вручную придуманные значения.
+    // Запасной источник — tgWebAppData из URL (Telegram дописывает его при открытии
+    // кнопки; GAS-iframe не даёт библиотеке получить handshake-ответ).
+    state.initData = (tg && tg.initData) ? tg.initData : (TG_URL_PARAMS.tgWebAppData || "");
+    if (state.initData && tg && !tg.initData) {
+      try {
+        if (TG_URL_PARAMS.tgWebAppPlatform) tg.platform = TG_URL_PARAMS.tgWebAppPlatform;
+      } catch (e) {}
+    }
+
+    // Одноразовый токен из URL кнопки: GAS-iframe не пропускает initData,
+    // но сервер авторизует по pilot_token (выдан боту, привязан к Telegram ID).
+    if (!state.initData && PILOT_TOKEN) {
+      bootAuthorized();
+      return;
+    }
+
+    if (!state.initData) {
+      // Диагностика: слушаем все postMessage — пишет события в on-screen diag.
+      window.__tgMessages = [];
+      window.addEventListener("message", function (ev) {
+        try {
+          var d = ev && ev.data;
+          var tag = (d && d.event) ? String(d.event) : (typeof d === "string" ? "str:" + d.slice(0, 40) : typeof d);
+          window.__tgMessages.push(tag);
+        } catch (e) {}
+      }, false);
+
+      // GAS оборачивает страницу во вложенный iframe (userCodeAppPanel):
+      // библиотека шлёт рукопожатие родителю (обёртке GAS), а не Telegram.
+      // Шлём handshake напрямую в window.top и ждём initData до 1.5 сек.
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ event: "iframe_ready", params: {} }, "*");
+        }
+        if (window.top && window.top !== window) {
+          window.top.postMessage({ event: "iframe_ready", params: {} }, "*");
+        }
+      } catch (e) {}
+      setTimeout(function () { bootAfterHandshake(); }, 1500);
+      return;
+    }
+    bootAuthorized();
+  }
+
+  function bootAfterHandshake() {
+    var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    state.initData = (tg && tg.initData) ? tg.initData : (TG_URL_PARAMS.tgWebAppData || "");
+    if (!state.initData) {
+      $("who").textContent = "доступа нет";
+      // Диагностика: показываем, что именно вернул Telegram WebApp, без самих данных.
+      var diag = "Платформа: " + (tg && tg.platform ? tg.platform : "нет WebApp");
+      diag += "\ninitData: " + (state.initData ? "есть (" + state.initData.length + " симв.)" : "пусто");
+      diag += "\nURL: " + String(window.location.href).slice(0, 120);
+      diag += "\nсообщения: " + ((window.__tgMessages && window.__tgMessages.length) ? window.__tgMessages.join(", ") : "нет");
+      diag += "\nпараметры URL: " + (Object.keys(TG_URL_PARAMS).length ? Object.keys(TG_URL_PARAMS).join(",") : "нет");
+      setAlert("Нет Telegram initData. Откройте приложение из Telegram — без подписи сервер доступ не выдаст.\n\n(диагностика)\n" + diag, "err");
+      $("reportsList").textContent = "Открытие разрешено только из Telegram.";
+      return;
+    }
+    bootAuthorized();
+  }
+
+  function bootAuthorized() {
+    apiCall("me").then(function (data) {
+      state.me = data.user || {};
+      var roles = (state.me.roles || []).join(", ") || "без ролей";
+      $("who").textContent = (state.me.displayName || "сотрудник") + " · " + roles;
+      if (data.currentWeek) $("weekBadge").textContent = data.currentWeek;
+      return loadReports();
+    }).catch(function (e) {
+      $("who").textContent = "доступа нет";
+      setAlert(e.message || "Не удалось авторизоваться", "err");
+      $("reportsList").textContent = "Доступ не подтверждён сервером.";
+    });
+  }
+
+  function loadReports() {
+    return apiCall("reports").then(function (data) {
+      state.reports = data.reports || [];
+      state.weekKey = data.weekKey || "";
+      if (state.weekKey) $("weekBadge").textContent = state.weekKey;
+      renderReports();
+      show("screenReports");
+    }).catch(function (e) {
+      setAlert(e.message, "err");
+    });
+  }
+
+  function renderReports() {
+    var host = $("reportsList");
+    if (!state.reports.length) {
+      host.className = "skeleton";
+      host.textContent = "Активных комплектов нет. Если ждали — проверьте привязку машины у диспетчера.";
+      return;
+    }
+    host.className = "";
+    var html = '<ul class="items">';
+    state.reports.forEach(function (r) {
+      var done = r.doneCount || 0, total = r.totalCount || 0;
+      html += '<li>' +
+        '<div class="num">' + (r.carNo ? String(r.carNo).slice(-3) : "?") + "</div>" +
+        '<div class="grow">' +
+          '<div class="ttl">' + esc(r.templateTitle || "Комплект") + " · " + esc(r.carNo || "") + "</div>" +
+          '<div class="hint">' + esc(r.weekKey || "") + " · " + esc(r.deadlineText || "срок не указан") + "</div>" +
+          '<div class="hint">пунктов: ' + done + " из " + total + "</div>" +
+          '<div class="actions">' +
+            '<span class="' + statusClass(r.status) + '">' + esc(fmtStatus(r.status)) + "</span>" +
+            '<button class="sm primary" data-open="' + esc(r.reportId) + '">Открыть</button>' +
+          "</div>" +
+        "</div>" +
+      "</li>";
+    });
+    html += "</ul>";
+    host.innerHTML = html;
+    Array.prototype.forEach.call(host.querySelectorAll("[data-open]"), function (b) {
+      b.addEventListener("click", function () { openReport(b.getAttribute("data-open")); });
+    });
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function openReport(reportId) {
+    setAlert("");
+    apiCall("report", { reportId: reportId }).then(function (data) {
+      state.report = data.report || null;
+      if (!state.report) throw new Error("Комплект не найден");
+      state.weekKey = state.report.weekKey || state.weekKey;
+      renderReport();
+      show("screenReport");
+    }).catch(function (e) { setAlert(e.message, "err"); });
+  }
+
+  function renderReport() {
+    var r = state.report;
+    var items = r.items || [];
+    // Готовность считает сервер: doneCount — принятые пункты, а не просто снятые.
+    var done = Number(r.doneCount || 0);
+    var total = Number(r.totalCount || items.length);
+    $("reportTitle").textContent = (r.templateTitle || "Комплект") + " · " + (r.carNo || "");
+    $("reportMeta").textContent = (r.weekKey || "") + " · срок: " + (r.deadlineText || "—");
+    $("reportStatus").className = statusClass(r.status);
+    $("reportStatus").textContent = fmtStatus(r.status);
+    $("reportProgress").style.width = (total ? Math.round(done * 100 / total) : 0) + "%";
+    $("reportCount").textContent = "Принято " + done + " из " + total + " пунктов";
+
+    var html = "";
+    items.forEach(function (it, idx) {
+      html += "<li>" +
+        '<div class="num">' + (idx + 1) + "</div>" +
+        '<div class="grow">' +
+          '<div class="ttl">' + esc(it.title || it.itemId) + "</div>" +
+          '<div class="hint">' + esc(it.hint || "") + "</div>" +
+          '<div class="actions">' +
+            '<span class="' + itemStatusClass(it.status) + '">' + esc(itemStatusText(it.status)) + "</span>" +
+            (it.rejectReasonText ? '<span class="badge err">' + esc(it.rejectReasonText) + "</span>" : "") +
+            '<button class="sm primary" data-shot="' + idx + '">' +
+              (it.status === "rejected" ? "Переснять" : it.status === "empty" ? "Снять" : "Открыть") + "</button>" +
+          "</div>" +
+        "</div>" +
+      "</li>";
+    });
+    $("itemsList").innerHTML = html;
+    Array.prototype.forEach.call($("itemsList").querySelectorAll("[data-shot]"), function (b) {
+      b.addEventListener("click", function () { openShot(parseInt(b.getAttribute("data-shot"), 10)); });
+    });
+  }
+
+  function openShot(idx) {
+    var items = (state.report && state.report.items) || [];
+    var it = items[idx];
+    if (!it) return;
+    state.shot = it;
+    state.shotIndex = idx;
+    state.draftBlob = null;
+    state.draftSource = "";
+    setAlert("");
+    setTab("example");
+    $("shotTitle").textContent = it.title || it.itemId;
+    $("shotHint").textContent = it.hint || "";
+    $("shotIndex").textContent = (idx + 1) + " из " + items.length;
+    $("shotPreview").classList.add("hidden");
+    $("shotPreview").removeAttribute("src");
+    $("btnUpload").disabled = true;
+    $("shotStatus").textContent = it.status === "rejected" && it.rejectReasonText
+      ? "Отклонено: " + it.rejectReasonText + ". Переснимите только этот пункт."
+      : "Сначала посмотрите пример, затем включите камеру.";
+    $("fileFallback").value = "";
+
+    var example = it.exampleUrl || "";
+    // Без фото-примера чёрная сцена не показывается вовсе — вместо неё подсказка.
+    $("stage").classList.toggle("hidden", !example);
+    $("shotTabs").classList.toggle("hidden", !example);
+    $("exampleImg").classList.toggle("hidden", !example);
+    if (example) {
+      $("exampleImg").src = example;
+    } else {
+      $("shotStatus").textContent = "Фото-пример для этого пункта ещё не задан. Снимите по описанию выше: «" + (it.hint || it.title || "пункт") + "».";
+      setTab("camera");
+    }
+    show("screenShot");
+  }
+
+  function setTab(tab) {
+    state.currentTab = tab;
+    Array.prototype.forEach.call($("shotTabs").querySelectorAll("button"), function (b) {
+      b.classList.toggle("active", b.getAttribute("data-tab") === tab);
+    });
+    var isCam = tab === "camera";
+    $("exampleImg").classList.toggle("hidden", isCam || !$("exampleImg").getAttribute("src"));
+    $("camNotice").classList.toggle("hidden", !isCam || !!state.stream || !!state.draftBlob);
+    if (!isCam) {
+      stopCam();
+      $("overlay").classList.add("hidden");
+      $("stageHint").classList.add("hidden");
+      $("btnCapture").disabled = true;
+      $("btnStartCam").disabled = false;
+      $("btnStartCam").textContent = "Включить камеру";
+    }
+  }
+
+  /* ---------- камера ---------- */
+  function startCamera() {
+    setAlert("");
+    $("camNotice").classList.add("hidden");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      camUnavailable("Браузер не поддерживает камеру. Используйте запасную загрузку фото.");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+      audio: false
+    }).then(function (stream) {
+      state.stream = stream;
+      var v = $("cam");
+      v.srcObject = stream;
+      v.classList.remove("hidden");
+      $("exampleImg").classList.add("hidden");
+      $("shotPreview").classList.add("hidden");
+      $("overlay").classList.remove("hidden");
+      $("stageHint").classList.remove("hidden");
+      $("btnCapture").disabled = false;
+      $("btnStartCam").textContent = "Камера включена";
+      $("btnStartCam").disabled = true;
+      $("shotStatus").textContent = "Совместите машину с пунктирной рамкой и нажмите «Снять».";
+    }).catch(function (err) {
+      camUnavailable("Камера в этом окне Telegram недоступна (" + (err && err.name ? err.name : "ошибка") + "). В пилоте — загрузка фото: выберите снимок полем ниже или снимите камерой телефона и пришлите файлом.");
+    });
+  }
+
+  function camUnavailable(msg) {
+    var n = $("camNotice");
+    n.className = "notice warn";
+    n.textContent = msg;
+    n.classList.remove("hidden");
+    $("btnStartCam").disabled = false;
+    $("btnStartCam").textContent = "Повторить";
+    $("btnCapture").disabled = true;
+  }
+
+  function capture() {
+    var v = $("cam");
+    if (!state.stream || !v.videoWidth) { setAlert("Камера не готова", "err"); return; }
+    var c = $("canvas");
+    var maxSide = 1600;
+    var w = v.videoWidth, h = v.videoHeight;
+    var scale = Math.min(1, maxSide / Math.max(w, h));
+    c.width = Math.round(w * scale);
+    c.height = Math.round(h * scale);
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+    c.toBlob(function (blob) {
+      if (!blob) { setAlert("Не удалось получить снимок", "err"); return; }
+      acceptDraft(blob, "camera");
+    }, "image/jpeg", 0.85);
+  }
+
+  function acceptDraft(blob, source) {
+    state.draftBlob = blob;
+    state.draftSource = source;
+    var url = URL.createObjectURL(blob);
+    var p = $("shotPreview");
+    p.src = url;
+    p.classList.remove("hidden");
+    stopCam();
+    $("overlay").classList.add("hidden");
+    $("stageHint").classList.add("hidden");
+    $("btnUpload").disabled = false;
+    $("btnStartCam").disabled = false;
+    $("btnStartCam").textContent = "Переснять камерой";
+    $("btnCapture").disabled = true;
+    $("shotStatus").textContent = "Кадр готов (" + Math.round(blob.size / 1024) + " КБ). Проверьте: машина целиком, номер читается, резко и не темно.";
+  }
+
+  /* ---------- отправка ---------- */
+  // Фото уходит на сервер как base64 внутри JSON: multipart GAS не разбирает.
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var result = String(reader.result || "");
+        var comma = result.indexOf(",");
+        resolve(comma === -1 ? result : result.slice(comma + 1));
+      };
+      reader.onerror = function () { reject(new Error("Не удалось прочитать кадр")); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function uploadDraft() {
+    if (!state.draftBlob || state.busy) return;
+    var r = state.report, it = state.shot;
+    if (!r || !it) return;
+    state.busy = true;
+    $("btnUpload").disabled = true;
+    $("shotStatus").textContent = "Отправка…";
+
+    blobToBase64(state.draftBlob).then(function (base64) {
+      return apiCall("upload_item", {
+        report_id: r.reportId,
+        item_id: it.itemId,
+        base64: base64,
+        mimeType: state.draftBlob.type || "image/jpeg",
+        fileName: (it.itemId || "shot").toLowerCase() + "_" +
+          new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14) + ".jpg"
+      }, "POST");
+    }).then(function (data) {
+      var item = data.item || {};
+      it.status = item.status || "uploaded";
+      $("shotStatus").textContent = item.message || "Кадр сохранён и принят на проверку.";
+      state.busy = false;
+      // Локальное обновление прогресса без повторного запроса отчёта
+      // (каждый запрос к GAS = 1-3 сек; экономим на каждом кадре).
+      var items = (state.report && state.report.items) || [];
+      var done = 0;
+      items.forEach(function (x) { if (x.status === "uploaded" || x.status === "accepted") done++; });
+      var total = items.length;
+      $("reportProgress").style.width = (total ? Math.round(done * 100 / total) : 0) + "%";
+      $("reportCount").textContent = "Принято " + done + " из " + total + " пунктов";
+    }).catch(function (e) {
+      state.busy = false;
+      $("btnUpload").disabled = false;
+      $("shotStatus").textContent = "";
+      setAlert("Кадр не сохранён: " + e.message + ". Отправьте повторно.", "err");
+    });
+  }
+
+  /* ---------- события ---------- */
+  $("btnReload").addEventListener("click", function () {
+    if (state.report) openReport(state.report.reportId); else loadReports();
+  });
+  $("btnBackReports").addEventListener("click", function () { stopCam(); setAlert(""); loadReports(); });
+  $("btnBackReport").addEventListener("click", function () {
+    stopCam();
+    setAlert("");
+    if (state.report) { renderReport(); show("screenReport"); }
+  });
+  Array.prototype.forEach.call($("shotTabs").querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () { setTab(b.getAttribute("data-tab")); });
+  });
+  $("btnStartCam").addEventListener("click", function () {
+    setTab("camera");
+    startCamera();
+  });
+  $("btnCapture").addEventListener("click", capture);
+  $("btnUpload").addEventListener("click", uploadDraft);
+  $("fileFallback").addEventListener("change", function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { setAlert("Нужен файл изображения", "err"); return; }
+    if (f.size > 12 * 1024 * 1024) { setAlert("Файл больше 12 МБ — выберите снимок поменьше", "err"); return; }
+    setTab("camera");
+    acceptDraft(f, "gallery");
+  });
+  window.addEventListener("pagehide", stopCam);
+
+  boot();
+})();
+</script>
+</body>
+</html>
