@@ -765,7 +765,10 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
       state.stream = stream;
       var v = $("cam");
       v.srcObject = stream;
+      // Сцена скрыта, если у пункта нет фото-примера: камере она нужна всегда.
+      $("stage").classList.remove("hidden");
       v.classList.remove("hidden");
+      if (v.play) { var pp = v.play(); if (pp && pp.catch) pp.catch(function () {}); }
       $("exampleImg").classList.add("hidden");
       $("shotPreview").classList.add("hidden");
       $("overlay").classList.remove("hidden");
@@ -811,6 +814,7 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
     var url = URL.createObjectURL(blob);
     var p = $("shotPreview");
     p.src = url;
+    $("stage").classList.remove("hidden");
     p.classList.remove("hidden");
     stopCam();
     $("overlay").classList.add("hidden");
