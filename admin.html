@@ -497,10 +497,7 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
       cache: "no-store",
       headers: {}
     };
-    // Кастомный заголовок с initData на междоменном запросе вызывает CORS-preflight,
-    // который GAS не обслуживает («Failed to fetch» из GAS-iframe). Шлём initData
-    // в теле/query; заголовок ставим только если он реально есть.
-    if (state.initData) options.headers["X-Telegram-Init-Data"] = state.initData;
+    // Кастомные заголовки на междоменном запросе вызывают CORS-preflight, который GAS не обслуживает.$([Environment]::NewLine)    // initData идёт только в query (GET) или теле (POST), заголовков нет.
 
     if (usePost) {
       var body = {};
