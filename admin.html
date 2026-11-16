@@ -497,7 +497,8 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
       cache: "no-store",
       headers: {}
     };
-    // Кастомные заголовки на междоменном запросе вызывают CORS-preflight, который GAS не обслуживает.$([Environment]::NewLine)    // initData идёт только в query (GET) или теле (POST), заголовков нет.
+    // Кастомные заголовки на междоменном запросе вызывают CORS-preflight, который GAS не обслуживает.
+    // initData идёт только в query (GET) или теле (POST), заголовков нет.
 
     if (usePost) {
       var body = {};
@@ -755,6 +756,26 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
     });
   }
 
+  function loadAssetInto_(photo, stage, path) {
+    if (!path) {
+      photo.removeAttribute("src");
+      photo.classList.add("hidden");
+      stage.classList.add("hidden");
+      return Promise.resolve();
+    }
+    return apiCall("asset", { path: path }).then(function (data) {
+      if (!data.dataUrl) throw new Error("Файл не найден");
+      photo.src = data.dataUrl;
+      photo.classList.remove("hidden");
+      stage.classList.remove("hidden");
+    }).catch(function (err) {
+      photo.removeAttribute("src");
+      photo.classList.add("hidden");
+      stage.classList.add("hidden");
+      throw err;
+    });
+  }
+
   function openItem(idx) {
     var items = (state.report && state.report.items) || [];
     var it = items[idx];
@@ -766,9 +787,10 @@ footer.legal { color: var(--muted); font-size: 11px; text-align: center; margin-
     $("itStatus").className = "badge";
     $("itStatus").textContent = it.status || "—";
     var photo = $("itPhoto");
-    if (it.photoUrl) { photo.src = it.photoUrl; photo.classList.remove("hidden"); }
-    else { photo.removeAttribute("src"); photo.classList.add("hidden"); }
-    $("itStage").classList.toggle("hidden", !it.photoUrl);
+    var stage = $("itStage");
+    loadAssetInto_(photo, stage, it.photoPath).catch(function (err) {
+      setAlert("Фото не удалось загрузить: " + (err.message || "ошибка"), "warn");
+    });
     $("itMeta").textContent = [
       it.uploadedAt ? "снято: " + it.uploadedAt : "",
       it.version ? "версия: v" + it.version : "",
